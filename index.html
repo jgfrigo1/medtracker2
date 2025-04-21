@@ -161,8 +161,18 @@
           document.getElementById('table-container').style.display = 'none';
 
           const marks = data.filter(d => d.type === 'mark');
-          const meds = data.filter(d => d.type === 'med');
 
+	// Filtrar solo horas entre 08:00 y 23:00
+	const filteredMarks = marks.filter(d => {
+	  const hour = new Date(d.timestamp).getHours();
+	  return hour >= 8 && hour <= 23;
+	});
+	
+	// Igual para meds
+	const meds = data.filter(d => d.type === 'med').filter(d => {
+	  const hour = new Date(d.timestamp).getHours();
+	  return hour >= 8 && hour <= 23;
+	});
           const daySeparators = [...new Set(marks.map(d => d.timestamp.split(' ')[0]))]
             .map(day => ({
               type: 'line',
@@ -182,7 +192,7 @@
           const datasets = [
             {
               label: 'Puntuación',
-              data: marks.map(d => ({x: d.timestamp, y: d.value})),
+              data: filteredMarks.map(d => ({ x: d.timestamp, y: d.value })),
               borderColor: 'gray',
               backgroundColor: 'gray',
               showLine: true,
@@ -253,15 +263,14 @@
 	  }
 	},
               scales: {
-                x: {
-                  type: 'time',
-                  time: { unit: 'hour', tooltipFormat: 'yyyy-MM-dd HH:mm' },
-                  ticks: {
-                    autoSkip: false,
-                    maxRotation: 90,
-                    minRotation: 45
-                  }
-                },
+                 x: {
+		    type: 'category', // antes era 'time'
+		    labels: filteredMarks.map(d => d.timestamp),
+		    ticks: {
+		      maxRotation: 90,
+		      minRotation: 45,
+		    }
+		  },
                 y: { min: 0, max: 10 }
               },
               interaction: {
