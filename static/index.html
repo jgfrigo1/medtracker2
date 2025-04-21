@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MedTracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0"></script>
+  <script> const ChartAnnotation = window['chartjs-plugin-annotation'];</script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Roboto', sans-serif; margin: 0; background-color: #f0f2f5; }
+    .container { padding: 2em; max-width: 1200px; margin: auto; }
+    .hidden { display: none; }
+    .card { background: white; border-radius: 12px; padding: 2em; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 2em; }
+    .btn { padding: 0.6em 1.5em; border: none; background-color: #007bff; color: white; border-radius: 6px; cursor: pointer; font-weight: bold; margin: 0.5em; }
+    .btn:hover { background-color: #0056b3; }
+    .title { font-size: 1.4em; margin-bottom: 1em; }
+    .hour-grid { display: grid; grid-template-columns: 70px 80px repeat(6, 1fr); gap: 1em; margin-bottom: 0.5em; }
+    .label-row { font-weight: bold; }
+    .dialogo { background: #e9ffe9; padding: 1em; border-left: 5px solid #28a745; margin-top: 1em; display: none; }
+    .checkbox-cell { text-align: center; }
+    #chart-container { overflow-x: auto; padding: 1em 0; width: 100%;}
+    #marksChart { min-width: 1000px; height: 400px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Pantalla inicial -->
+    <div id="inicio" class="card">
+      <h1>Monitorización diaria</h1>
+      <p>Seleccione una opción:</p>
+      <button class="btn" onclick="mostrarSeccion('entrada')">Introducir Datos</button>
+      <button class="btn" onclick="mostrarSeccion('visualizacion')">Ver Datos</button>
+    </div>
+
+    <!-- Sección de entrada de datos -->
+    <div id="entrada" class="card hidden">
+      <h2>Introducir Puntuaciones y Medicaciones</h2>
+      <form id="mark-form">
+        <label for="date">Fecha:</label>
+        <input type="date" id="date" name="date" required /><br><br>
+
+        <div class="hour-grid label-row">
+          <div>Hora</div>
+          <div>Puntuación</div>
+          <div class="checkbox-cell">Sinemet</div>
+          <div class="checkbox-cell">Mirapexin</div>
+          <div class="checkbox-cell">Acfol</div>
+          <div class="checkbox-cell">Azilect</div>
+          <div class="checkbox-cell">Gabapentina</div>
+          <div class="checkbox-cell">Mucuna</div>
+        </div>
+
+        <div id="hourly-inputs"></div>
+
+        <button type="button" class="btn" onclick="submitForm()">Guardar</button>
+        <button type="button" class="btn" onclick="volverInicio()">Volver al Inicio</button>
+      </form>
+
+      <div class="dialogo" id="submit-message">
+        <p id="submit-text"></p>
+      </div>
+    </div>
+
+    <!-- Sección de visualización -->
+    <div id="visualizacion" class="card hidden">
+      <h2>Ver Datos Históricos</h2>
+      <form id="date-range-form">
+        <label for="start_date">Desde:</label>
+        <input type="date" id="start_date" name="start_date" required />
+        <label for="end_date">Hasta:</label>
+        <input type="date" id="end_date" name="end_date" required />
+        <label for="view_type">Ver como:</label>
+        <select id="view_type">
+          <option value="chart">Gráfico</option>
+          <option value="table">Tabla</option>
+        </select>
+        <button type="button" class="btn" onclick="fetchChartData()">Mostrar</button>
+        <button type="button" class="btn" onclick="volverInicio()">Volver al Inicio</button>
+      </form>
+
+      <div id="chart-container" style="display:none">
+        <canvas id="marksChart"></canvas>
+      </div>
+
+      <div id="table-container" style="display:none">
+        <table border="1" cellpadding="5" cellspacing="0">
+          <thead><tr><th>Fecha y hora</th><th>Valor</th><th>Tipo</th></tr></thead>
+          <tbody id="data-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const MEDS = {"Sinemet": 1,"Mirapexin": 1.25,"Acfol": 1.5,"Azilect": 1.75,"Gabapentina": 2,"Mucuna": 2.25};
+  let chartInstance;
+
+  function mostrarSeccion(id) {
+    document.getElementById('inicio').classList.add('hidden');
+    ['entrada','visualizacion'].forEach(s => document.getElementById(s).classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+  }
+
+  function volverInicio() {
+    document.getElementById('inicio').classList.remove('hidden');
+    ['entrada','visualizacion'].forEach(s => document.getElementById(s).classList.add('hidden'));
+  }
+
+  function generarInputs() {
+    const container = document.getElementById('hourly-inputs');
+    for (let h = 8; h < 24; h++) {
+      const row = document.createElement('div');
+      row.className = 'hour-grid';
+      const hour = `${h.toString().padStart(2,'0')}:00`;
+      row.innerHTML = `
+        <div>${hour}</div>
+        <input type="number" name="hour_${h}" min="1" max="10" placeholder="Puntuación" />
+        ${Object.keys(MEDS).map(med => `<div class='checkbox-cell'><input type="checkbox" name="med_${h}_${med}" /></div>`).join('')}
+      `;
+      container.appendChild(row);
+    }
+  }
+  generarInputs();
+
+  function setFechaHoy() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('date').value = today;
+  }
+  window.onload = setFechaHoy;
+
+  function submitForm() {
+    const form = document.getElementById('mark-form');
+    const formData = new FormData(form);
+    fetch('/submit', {
+      method: 'POST',
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById('submit-text').innerText = data.message;
+      document.getElementById('submit-message').style.display = 'block';
+      form.reset();
+      setFechaHoy();
+    });
+  }
+
+  function fetchChartData() {
+    const start = document.getElementById('start_date').value;
+    const end = document.getElementById('end_date').value;
+    const type = document.getElementById('view_type').value;
+
+    fetch(`/get_data?start_date=${start}&end_date=${end}`)
+      .then(res => res.json())
+      .then(data => {
+        if (type === 'chart') {
+          document.getElementById('chart-container').style.display = 'block';
+          document.getElementById('table-container').style.display = 'none';
+
+          const marks = data.filter(d => d.type === 'mark');
+          const meds = data.filter(d => d.type === 'med');
+
+          const daySeparators = [...new Set(marks.map(d => d.timestamp.split(' ')[0]))]
+            .map(day => ({
+              type: 'line',
+              mode: 'vertical',
+              scaleID: 'x',
+              value: `${day} 00:00`,
+              borderColor: 'black',
+              borderWidth: 1,
+              label: {
+                display: true,
+                content: day,
+                position: 'start',
+                rotation: 90
+              }
+            }));
+
+          const datasets = [
+            {
+              label: 'Puntuación',
+              data: marks.map(d => ({x: d.timestamp, y: d.value})),
+              borderColor: 'gray',
+              backgroundColor: 'gray',
+              showLine: true,
+              segment: {
+                borderColor: ctx => {
+                  const y = ctx.p0.parsed.y;
+                  if (y >= 8) return 'red';
+                  if (y <= 3) return 'blue';
+                  return 'gray';
+                }
+              },
+              tension: 0.4,
+              datalabels: { display: false }
+            },
+            ...Object.keys(MEDS).map((med, idx) => ({
+              label: med,
+              data: meds.filter(d => d.label === med).map(d => ({x: d.timestamp, y: parseFloat(d.value)})),
+              borderColor: 'transparent',
+              backgroundColor: `hsl(${idx * 60}, 70%, 60%)`,
+              showLine: false,
+              pointRadius: 5,
+              datalabels: {
+                display: true,
+                align: 'top',
+                formatter: () => med,
+                font: { weight: 'bold' },
+                color: '#000'
+              }
+            }))
+          ];
+
+          const canvas = document.getElementById('marksChart');
+		const ctx = canvas.getContext('2d');
+
+		// Calcular número total de observaciones (datos de tipo "mark" y "med")
+		const totalObservations = data.length;
+
+		const canvasWidth = Math.max(totalObservations * 40, 800); // 40px por punto
+		canvas.width = canvasWidth;
+		canvas.height = 400;
+
+          if (chartInstance) chartInstance.destroy();
+          chartInstance = new Chart(ctx, {
+            type: 'scatter',
+            data: { datasets },
+            options: {
+              responsive: false,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                datalabels: {},
+                annotation: {
+                  annotations: daySeparators
+                }
+              },
+              scales: {
+                x: {
+                  type: 'time',
+                  time: { unit: 'hour', tooltipFormat: 'yyyy-MM-dd HH:mm' },
+                  ticks: {
+                    autoSkip: false,
+                    maxRotation: 90,
+                    minRotation: 45
+                  }
+                },
+                y: { min: 0, max: 10 }
+              },
+              interaction: {
+                mode: 'x',
+                intersect: false
+              }
+            },
+            plugins: [ChartDataLabels, ChartAnnotation]
+          });
+
+        } else {
+          document.getElementById('chart-container').style.display = 'none';
+          document.getElementById('table-container').style.display = 'block';
+          const tbody = document.getElementById('data-table-body');
+          tbody.innerHTML = '';
+          data.forEach(d => {
+            tbody.innerHTML += `<tr><td>${d.timestamp}</td><td>${d.value}</td><td>${d.type === 'med' ? d.label : 'Puntuación'}</td></tr>`;
+          });
+        }
+      });
+  }
+</script>
+</body>
+</html>

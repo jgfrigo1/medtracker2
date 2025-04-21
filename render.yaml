@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: medtracker
+    env: python
+    buildCommand: ""
+    startCommand: bash start.sh
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: medtracker-db
+          property: connectionString
+
+databases:
+  - name: medtracker-db
