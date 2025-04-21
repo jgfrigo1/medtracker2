@@ -19,15 +19,6 @@ MEDICATIONS = {
     "Mucuna": 2.25
 }
 
-class Mark(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.Date, nullable=False, unique=True)
-    hours = db.Column(db.String(100), nullable=False)  # e.g. "5,6,4,..."
-    meds = db.Column(db.Text)  # JSON format: {"08": ["Mirapexin", "Acfol"], ...}
-
-    def __repr__(self):
-        return f'<Mark {self.date}>'
-
 with app.app_context():
     db.create_all()
 
