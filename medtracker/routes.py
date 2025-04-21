@@ -73,15 +73,25 @@ def get_data():
 
         marks = Mark.query.filter(Mark.date >= start_date, Mark.date <= end_date).order_by(Mark.date).all()
         data_points = []
+        previous_date = None
 
         for mark in marks:
+            if previous_date and mark.date != previous_date:
+                # Añadir punto nulo para romper la línea entre días
+                null_point = {
+                    "timestamp": f"{previous_date} 23:59",
+                    "value": None,
+                    "type": "mark"
+                }
+                data_points.append(null_point)
+    
             hourly_values = mark.hours.split(',')
             for i, val in enumerate(hourly_values):
                 if val.strip():
                     hour = 8 + i
                     timestamp = f"{mark.date} {hour:02d}:00"
                     data_points.append({"timestamp": timestamp, "value": int(val), "type": "mark"})
-
+    
             if mark.meds:
                 meds_data = json.loads(mark.meds)
                 for hour_str, meds in meds_data.items():
@@ -93,7 +103,9 @@ def get_data():
                             "type": "med",
                             "label": med
                         })
-
+    
+            previous_date = mark.date
+    
         return jsonify(data_points)
     except Exception as e:
         return jsonify({"message": f"Error al recuperar datos: {str(e)}"}), 500
