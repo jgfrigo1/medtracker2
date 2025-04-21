@@ -231,13 +231,27 @@
             options: {
               responsive: false,
               maintainAspectRatio: false,
-              plugins: {
-                legend: { display: false },
-                datalabels: {},
-                annotation: {
-                  annotations: daySeparators
-                }
-              },
+	plugins: {
+	  legend: { display: false },
+	  datalabels: {},
+	  annotation: {
+	    annotations: {
+	      highZone: {
+		type: 'box',
+		yMin: 7,
+		yMax: 10,
+		backgroundColor: 'rgba(255, 0, 0, 0.1)'
+	      },
+	      lowZone: {
+		type: 'box',
+		yMin: 0,
+		yMax: 3,
+		backgroundColor: 'rgba(0, 0, 255, 0.1)'
+	      },
+	      ...Object.fromEntries(daySeparators.map((ann, idx) => [`day${idx}`, ann]))
+	    }
+	  }
+	},
               scales: {
                 x: {
                   type: 'time',
