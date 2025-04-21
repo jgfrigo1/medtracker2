@@ -10,8 +10,6 @@ import os
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///marks.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db = SQLAlchemy(app)
-
 MEDICATIONS = {
     "Sinemet": 1.0,
     "Mirapexin": 1.25,
