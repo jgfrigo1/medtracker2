@@ -5,6 +5,17 @@ from .models import Mark
 import datetime
 import json
 import os
+from flask_httpauth import HTTPBasicAuth
+auth = HTTPBasicAuth()
+
+# Diccionario de usuarios (puedes hacer esto más seguro con hash si lo necesitas)
+users = {
+    "josep": "josep"
+}
+
+@auth.verify_password
+def verify_password(username, password):
+    return users.get(username) == password
 
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///marks.db'
@@ -23,6 +34,7 @@ with app.app_context():
     db.create_all()
 
 @app.route('/')
+@auth.login_required
 def index():
     # Carga el HTML directamente desde archivo si existe (mejor para desarrollo)
     if os.path.exists('index.html'):
@@ -31,6 +43,7 @@ def index():
     return "Archivo index.html no encontrado"
 
 @app.route('/submit', methods=['POST'])
+@auth.login_required
 def submit():
     try:
         date_str = request.form.get('date')
@@ -66,6 +79,7 @@ def submit():
         return jsonify({"message": f"Error al guardar: {str(e)}"}), 500
 
 @app.route('/get_data', methods=['GET'])
+@auth.login_required
 def get_data():
     try:
         start_date = datetime.datetime.strptime(request.args.get('start_date'), '%Y-%m-%d').date()
