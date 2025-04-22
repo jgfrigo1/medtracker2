@@ -6,16 +6,6 @@ from sqlalchemy.engine import Engine
 import psycopg2
 
 db = SQLAlchemy()
-
-@event.listens_for(Engine, "engine_connect")
-def ping_connection(connection, branch):
-    if branch:
-        return
-    try:
-        connection.scalar(text("SELECT 1"))
-    except psycopg2.Error:
-        connection.invalidate()
-        connection.scalar(text("SELECT 1"))
         
 def create_app():
     app = Flask(__name__)
