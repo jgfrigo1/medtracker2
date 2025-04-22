@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 import os
-from sqlalchemy import event
+from sqlalchemy import event, text
 from sqlalchemy.engine import Engine
 import psycopg2
 
@@ -12,10 +12,10 @@ def ping_connection(connection, branch):
     if branch:
         return
     try:
-        connection.scalar("SELECT 1")
+        connection.scalar(text("SELECT 1"))
     except psycopg2.Error:
         connection.invalidate()
-        connection.scalar("SELECT 1")
+        connection.scalar(text("SELECT 1"))
         
 def create_app():
     app = Flask(__name__)
